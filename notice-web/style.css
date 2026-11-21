@@ -321,6 +321,27 @@ body.scrap-mode .sites { display: none; }
 body.scrap-mode .layout { grid-template-columns: 220px 1fr; }
 body.scrap-mode.sidebar-hidden .layout { grid-template-columns: 1fr; }
 
+/* ---------- 중복 정리 ---------- */
+.dup-btn { flex-shrink: 0; height: 30px; font-size: 13px; }
+body.scrap-mode .dup-btn { display: none; }
+.panel-dup { flex: 1; }
+body.dup-mode .panel-new,
+body.dup-mode .panel-read { display: none; }
+.dup-group { border-bottom: 1px solid var(--line); }
+.dup-head {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none; background: transparent;
+  text-align: left; cursor: pointer;
+}
+.dup-head:hover { background: var(--gray-soft); }
+.dup-icon { width: 12px; flex-shrink: 0; color: var(--text-sub); font-size: 11px; }
+.dup-title { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dup-num { flex-shrink: 0; padding: 0 8px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-size: 12px; }
+.dup-items { background: var(--gray-soft); }
+.dup-items .notice { padding-left: 34px; }
+
 /* ---------- 사이트 칸 맨 아래 오른쪽: 확장 프로그램 받기 ---------- */
 .ext-download {
   align-self: flex-end; /* 오른쪽 끝 */

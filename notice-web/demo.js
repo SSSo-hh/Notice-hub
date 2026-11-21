@@ -66,6 +66,9 @@ function demoSeed() {
     [9, "제5회 대학생 데이터 시각화 공모전", 2, false],
     [9, "친환경 아이디어 공모전 (총상금 1,000만원)", 12, false],
     [9, "AI 활용 숏폼 영상 공모전", 45, true],
+    // 중복 정리 체험용: 같은 폴더의 다른 게시판에 같은 제목
+    [1, "2027학년도 1학기 국가장학금 1차 신청 안내", 4, true],
+    [4, "2026학년도 동계 계절학기 수강신청 일정 안내", 2, false],
   ];
   const notices = rows.map(([siteId, title, h, read], i) => {
     const s = sites.find((x) => x.id === siteId);

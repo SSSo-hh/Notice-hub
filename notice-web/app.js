@@ -11,7 +11,8 @@ let scraps = []; // 스크랩한 공지 (공지와 따로 저장되어, 공지�
 let scrapReady = true; // scraps 표가 아직 없으면(supabase-scrap.sql 실행 전) false
 
 // 지금 보는 화면: "folder"(폴더의 공지) 또는 "scrap"(스크랩 모음)
-let viewMode = "folder";
+let viewMode = "folder"; // "folder"(폴더의 공지), "dup"(폴더의 중복 정리), "scrap"(스크랩)
+const openDupGroups = new Set(); // 중복 정리 화면에서 펼쳐 둔 묶음(제목)
 // 스크랩 화면에서 고른 폴더: "all"(전체) 또는 폴더 id
 let scrapFolderFilter = "all";
 
@@ -204,6 +205,91 @@ function renderNoticeList(listId, items, emptyText) {
       render();
     });
 
+    list.appendChild(li);
+  });
+}
+
+// ---------- 중복 정리 ----------
+
+// 제목 비교용 글자: 앞뒤 공백을 빼고, 띄어쓰기 여러 개는 하나로 봅니다.
+function titleKey(title) {
+  return title.trim().replace(/\s+/g, " ");
+}
+
+// 지금 폴더에서 제목이 같은 공지가 2건 이상인 묶음 목록 (새로운 공지, 확인한 공지 모두)
+function dupGroups(folderId) {
+  const byTitle = new Map(); // 제목 -> 그 제목의 공지들
+  noticesInFolder(folderId).forEach((notice) => {
+    const key = titleKey(notice.title);
+    if (!byTitle.has(key)) byTitle.set(key, []);
+    byTitle.get(key).push(notice);
+  });
+  return Array.from(byTitle.entries())
+    .filter(([, list]) => list.length >= 2)
+    .map(([title, list]) => ({ title, list }));
+}
+
+// 중복 정리 화면: 묶음 제목 줄(▶ 접힘 / ▼ 펼침)과 펼친 묶음 안의 공지들
+function renderDup() {
+  const groups = dupGroups(currentFolderId);
+  document.querySelector("#dup-count").textContent = groups.length;
+  document.querySelector("#dup-all").checked = false;
+
+  const list = document.querySelector("#dup-list");
+  list.innerHTML = "";
+  if (groups.length === 0) {
+    list.innerHTML = `<li class="empty">이 폴더에는 제목이 같은 공지가 없습니다.</li>`;
+    return;
+  }
+
+  groups.forEach((group) => {
+    const open = openDupGroups.has(group.title);
+    const li = document.createElement("li");
+    li.className = "dup-group";
+    li.innerHTML = `
+      <button type="button" class="dup-head">
+        <span class="dup-icon">${open ? "▼" : "▶"}</span>
+        <span class="dup-title"></span>
+        <span class="dup-num">${group.list.length}건</span>
+      </button>
+      <ul class="dup-items${open ? "" : " hidden"}"></ul>`;
+    li.querySelector(".dup-title").textContent = group.title;
+
+    // 제목 줄을 누르면 펼치고 접습니다.
+    li.querySelector(".dup-head").addEventListener("click", () => {
+      if (openDupGroups.has(group.title)) openDupGroups.delete(group.title);
+      else openDupGroups.add(group.title);
+      render();
+    });
+
+    const items = li.querySelector(".dup-items");
+    group.list.forEach((notice) => {
+      const site = findSite(notice.site_id);
+      const row = document.createElement("li");
+      row.className = "notice";
+      if (!notice.read) row.classList.add("unread");
+      row.innerHTML = `
+        <input type="checkbox" class="notice-check" data-id="${notice.id}">
+        <div class="notice-body">
+          <a class="notice-title" href="${notice.link}"></a>
+          <div class="notice-meta">
+            <span>${formatDate(notice.collected_at)}</span>
+            <span>${notice.read ? "확인한 공지" : "새로운 공지"}</span>
+          </div>
+        </div>`;
+      // 묶음 안에서는 제목이 모두 같으므로, 제목 대신 게시판 이름을 보여 줍니다. (누르면 그 게시판의 원문)
+      row.querySelector(".notice-title").textContent = site ? site.name : notice.site_name || "(지운 게시판)";
+      row.querySelector(".notice-title").addEventListener("click", async (event) => {
+        event.preventDefault();
+        window.open(notice.link, "_blank", "noopener");
+        if (notice.read) return;
+        const { error } = await db.from("notices").update({ read: true }).eq("id", notice.id);
+        if (error) return showSaveError(error);
+        notice.read = true;
+        render();
+      });
+      items.appendChild(row);
+    });
     list.appendChild(li);
   });
 }
@@ -422,8 +508,16 @@ function render() {
   }
 
   renderHead();
-  renderNotices();
   renderSites();
+
+  // 중복 정리 버튼: 묶음 수 표시, 중복 정리 화면에서는 "공지 목록"으로 돌아가는 버튼
+  const dupCount = dupGroups(currentFolderId).length;
+  document.querySelector("#dup-btn").innerHTML =
+    viewMode === "dup" ? "공지 목록으로" : `중복 정리 <span class="count">${dupCount}</span>`;
+  document.body.classList.toggle("dup-mode", viewMode === "dup");
+  document.querySelector("#panel-dup").classList.toggle("hidden", viewMode !== "dup");
+  if (viewMode === "dup") renderDup();
+  else renderNotices();
 }
 
 // DB 사용량을 조회합니다. (SQL Editor에서 만든 get_db_size 함수를 rpc 로 부름)
@@ -546,6 +640,13 @@ function setupListTools(section) {
 
 setupListTools("new");
 setupListTools("read");
+setupListTools("dup"); // 중복 정리 화면의 전체 선택, 선택 삭제 (같은 방식)
+
+// 중복 정리 버튼: 폴더 공지 화면 <-> 중복 정리 화면
+document.querySelector("#dup-btn").addEventListener("click", () => {
+  viewMode = viewMode === "dup" ? "folder" : "dup";
+  render();
+});
 
 // 왼쪽 "스크랩" 항목: 스크랩 화면 열기
 document.querySelector("#scrap-nav").addEventListener("click", () => {
