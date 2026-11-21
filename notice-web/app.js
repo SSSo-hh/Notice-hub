@@ -13,6 +13,7 @@ let scrapReady = true; // scraps 표가 아직 없으면(supabase-scrap.sql 실�
 // 지금 보는 화면: "folder"(폴더의 공지) 또는 "scrap"(스크랩 모음)
 let viewMode = "folder"; // "folder"(폴더의 공지), "dup"(폴더의 중복 정리), "scrap"(스크랩)
 const openDupGroups = new Set(); // 중복 정리 화면에서 펼쳐 둔 묶음(제목)
+const searchText = { new: "", read: "" }; // 새로운 공지, 확인한 공지 칸의 제목 검색어
 // 스크랩 화면에서 고른 폴더: "all"(전체) 또는 폴더 id
 let scrapFolderFilter = "all";
 
@@ -70,6 +71,37 @@ function noticesInFolder(folderId) {
 }
 
 
+// ---------- 읽음 / 읽지 않음 저장 ----------
+
+// read_at 칸(확인한 시각)이 DB에 있는지. supabase-readat.sql 을 실행하기 전이면 false 로 바뀌고 read 만 저장합니다.
+let hasReadAt = true;
+
+// 공지 여러 개를 읽음(true) 또는 읽지 않음(false)으로 저장합니다.
+// 읽음으로 바꿀 때는 확인한 시각(read_at)도 함께 저장해, 확인한 공지 칸에서 가장 나중에 확인한 공지가 맨 위로 오게 합니다.
+async function setRead(ids, read) {
+  const readAt = read ? new Date().toISOString() : null;
+  let { error } = await db
+    .from("notices")
+    .update(hasReadAt ? { read, read_at: readAt } : { read })
+    .in("id", ids);
+  // read_at 칸이 아직 없으면(SQL 실행 전) read 만 다시 저장
+  if (error && hasReadAt && String(error.message).includes("read_at")) {
+    hasReadAt = false;
+    ({ error } = await db.from("notices").update({ read }).in("id", ids));
+  }
+  if (error) {
+    showSaveError(error);
+    return false;
+  }
+  notices.forEach((notice) => {
+    if (ids.includes(notice.id)) {
+      notice.read = read;
+      notice.read_at = readAt;
+    }
+  });
+  return true;
+}
+
 // ---------- 화면 그리기 ----------
 
 // 왼쪽 폴더 목록
@@ -95,6 +127,7 @@ function renderFolders() {
     }
 
     btn.addEventListener("click", () => {
+      if (currentFolderId !== folder.id) clearSearch(); // 다른 폴더로 가면 검색어를 비움
       currentFolderId = folder.id;
       viewMode = "folder"; // 스크랩 화면에 있었으면 공지 화면으로
       render();
@@ -198,11 +231,8 @@ function renderNoticeList(listId, items, emptyText) {
       if (notice.read) return; // 이미 읽은 공지면 저장할 것이 없음
 
       // DB의 read 값을 true로 바꿉니다: notices 테이블에서 id가 이 공지인 줄을 수정
-      const { error } = await db.from("notices").update({ read: true }).eq("id", notice.id);
-      if (error) return showSaveError(error);
-
-      notice.read = true; // DB 저장이 성공하면 화면 데이터도 바꾸고 다시 그림
-      render();
+      // DB의 read 값을 true로(확인한 시각도 함께) 바꾸고, 성공하면 다시 그림
+      if (await setRead([notice.id], true)) render();
     });
 
     list.appendChild(li);
@@ -233,7 +263,6 @@ function dupGroups(folderId) {
 function renderDup() {
   const groups = dupGroups(currentFolderId);
   document.querySelector("#dup-count").textContent = groups.length;
-  document.querySelector("#dup-all").checked = false;
 
   const list = document.querySelector("#dup-list");
   list.innerHTML = "";
@@ -283,10 +312,7 @@ function renderDup() {
         event.preventDefault();
         window.open(notice.link, "_blank", "noopener");
         if (notice.read) return;
-        const { error } = await db.from("notices").update({ read: true }).eq("id", notice.id);
-        if (error) return showSaveError(error);
-        notice.read = true;
-        render();
+        if (await setRead([notice.id], true)) render();
       });
       items.appendChild(row);
     });
@@ -427,10 +453,7 @@ function renderScrap() {
       window.open(scrap.link, "_blank", "noopener");
       const notice = notices.find((n) => n.link === scrap.link && !n.read);
       if (!notice) return;
-      const { error } = await db.from("notices").update({ read: true }).eq("id", notice.id);
-      if (error) return showSaveError(error);
-      notice.read = true;
-      render();
+      if (await setRead([notice.id], true)) render();
     });
 
     li.querySelector(".scrap-btn").addEventListener("click", () => removeScraps([scrap.id]));
@@ -441,14 +464,20 @@ function renderScrap() {
 // 가운데: 새로운 공지와 확인한 공지
 function renderNotices() {
   const items = noticesInFolder(currentFolderId);
-  const newItems = items.filter((n) => !n.read);
-  const readItems = items.filter((n) => n.read);
+  // 검색어가 있으면 제목에 그 글자가 들어간 공지만 (영문 대소문자 무시)
+  const match = (notice, section) =>
+    !searchText[section] || notice.title.toLowerCase().includes(searchText[section].trim().toLowerCase());
+  const newItems = items.filter((n) => !n.read && match(n, "new"));
+  // 확인한 공지: 가장 나중에 확인한 공지가 맨 위 (확인한 시각 read_at 순서, 시각이 없는 예전 공지는 그 아래 수집 순서)
+  const readItems = items
+    .filter((n) => n.read && match(n, "read"))
+    .sort((a, b) => (b.read_at || "").localeCompare(a.read_at || "") || b.collected_at.localeCompare(a.collected_at));
 
   document.querySelector("#new-count").textContent = newItems.length;
   document.querySelector("#read-count").textContent = readItems.length;
 
-  renderNoticeList("#new-list", newItems, "새로운 공지가 없습니다.");
-  renderNoticeList("#read-list", readItems, "확인한 공지가 없습니다.");
+  renderNoticeList("#new-list", newItems, searchText.new ? "검색 결과가 없습니다." : "새로운 공지가 없습니다.");
+  renderNoticeList("#read-list", readItems, searchText.read ? "검색 결과가 없습니다." : "확인한 공지가 없습니다.");
 
   // 다시 그렸으니 전체 선택 체크도 풀어 둡니다.
   document.querySelector("#new-all").checked = false;
@@ -614,7 +643,8 @@ document.querySelector("#add-folder-form").addEventListener("submit", async (eve
 function setupListTools(section) {
   const checkAll = document.querySelector(`#${section}-all`);
 
-  checkAll.addEventListener("change", () => {
+  // 전체 선택 칸이 있는 칸만 (중복 정리 칸은 전체 선택 대신 "1개만 남기기")
+  if (checkAll) checkAll.addEventListener("change", () => {
     document.querySelectorAll(`#${section}-list .notice-check`).forEach((box) => {
       box.checked = checkAll.checked;
     });
@@ -641,6 +671,36 @@ function setupListTools(section) {
 setupListTools("new");
 setupListTools("read");
 setupListTools("dup"); // 중복 정리 화면의 전체 선택, 선택 삭제 (같은 방식)
+
+// 제목 검색: 글자를 입력할 때마다 그 칸의 목록만 다시 그립니다.
+function clearSearch() {
+  ["new", "read"].forEach((section) => {
+    searchText[section] = "";
+    document.querySelector(`#${section}-search`).value = "";
+  });
+}
+["new", "read"].forEach((section) => {
+  document.querySelector(`#${section}-search`).addEventListener("input", (event) => {
+    searchText[section] = event.target.value;
+    renderNotices();
+  });
+});
+
+// 1개만 남기기: 이 폴더의 중복 묶음마다 가장 최근에 수집한 공지 1건만 남기고 나머지를 삭제합니다.
+document.querySelector("#dup-keep-one").addEventListener("click", async () => {
+  const groups = dupGroups(currentFolderId);
+  if (groups.length === 0) return;
+  // 묶음 안 공지는 최근 수집 순서라 맨 앞(0번)이 가장 최근 것: 나머지(1번부터)를 지움
+  const ids = groups.flatMap((group) => group.list.slice(1).map((notice) => notice.id));
+  if (!confirm(`중복 묶음 ${groups.length}개에서 가장 최근에 수집한 공지 1건씩만 남기고 ${ids.length}건을 삭제합니다.`)) return;
+
+  const { error } = await db.from("notices").delete().in("id", ids);
+  if (error) return showSaveError(error);
+  for (let i = notices.length - 1; i >= 0; i--) {
+    if (ids.includes(notices[i].id)) notices.splice(i, 1);
+  }
+  render();
+});
 
 // 중복 정리 버튼: 폴더 공지 화면 <-> 중복 정리 화면
 document.querySelector("#dup-btn").addEventListener("click", () => {
@@ -683,14 +743,7 @@ function checkedIds(section) {
 document.querySelector("#new-read").addEventListener("click", async () => {
   const ids = checkedIds("new");
   if (ids.length === 0) return;
-
-  const { error } = await db.from("notices").update({ read: true }).in("id", ids);
-  if (error) return showSaveError(error);
-
-  notices.forEach((notice) => {
-    if (ids.includes(notice.id)) notice.read = true;
-  });
-  render();
+  if (await setRead(ids, true)) render();
 });
 
 // 스크랩: 체크한 공지를 한꺼번에 스크랩합니다 (새로운 공지, 확인한 공지 칸 모두)
@@ -709,31 +762,8 @@ document.querySelector("#read-unread").addEventListener("click", async () => {
 
   const ids = Array.from(checked).map((box) => Number(box.dataset.id));
 
-  // DB에서 고른 공지의 read 값을 false로 바꿉니다.
-  const { error } = await db.from("notices").update({ read: false }).in("id", ids);
-  if (error) return showSaveError(error);
-
-  notices.forEach((notice) => {
-    if (ids.includes(notice.id)) notice.read = false;
-  });
-  render();
-});
-
-// 읽음: 새로운 공지에서 고른 공지를 확인한 공지로 옮깁니다 (읽지 않음의 반대, 원문은 열지 않음).
-document.querySelector("#new-read").addEventListener("click", async () => {
-  const checked = document.querySelectorAll("#new-list .notice-check:checked");
-  if (checked.length === 0) return;
-
-  const ids = Array.from(checked).map((box) => Number(box.dataset.id));
-
-  // DB에서 고른 공지의 read 값을 true로 바꿉니다.
-  const { error } = await db.from("notices").update({ read: true }).in("id", ids);
-  if (error) return showSaveError(error);
-
-  notices.forEach((notice) => {
-    if (ids.includes(notice.id)) notice.read = true;
-  });
-  render();
+  // DB에서 고른 공지의 read 값을 false로 바꿉니다. (확인한 시각도 지움)
+  if (await setRead(ids, false)) render();
 });
 
 // 사이드바 숨기기: body에 sidebar-hidden 클래스를 붙였다 뗐다 하면, style.css가 폴더 칸을 숨깁니다.

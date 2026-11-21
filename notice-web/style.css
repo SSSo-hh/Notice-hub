@@ -227,7 +227,17 @@ body.sidebar-hidden .sidebar { display: none; }
   padding: 5px 8px 5px 14px;
   border-bottom: 1px solid var(--line);
 }
-.panel-head h2 { font-size: 13px; }
+.panel-head h2 { font-size: 13px; flex-shrink: 0; }
+/* 패널 제목 옆 제목 검색 칸 (돋보기 + 입력) */
+.panel-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.search-box {
+  display: flex; align-items: center; gap: 4px;
+  height: 26px; padding: 0 8px;
+  border: 1px solid var(--line); border-radius: 13px;
+  background: var(--card); color: var(--text-sub);
+}
+.search-box:focus-within { border-color: var(--accent); color: var(--accent); }
+.search-box input { width: 110px; min-width: 0; border: none; outline: none; background: transparent; font-size: 12px; color: var(--text); }
 .panel-head .btn { height: 26px; padding: 0 8px; font-size: 12px; }
 .count { color: var(--accent); margin-left: 2px; }
 .panel-read .count { color: var(--text-sub); }
