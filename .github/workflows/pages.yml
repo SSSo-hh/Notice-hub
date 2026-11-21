@@ -1,0 +1,42 @@
+# GitHub Pages 자동 배포
+# main 에 올릴 때마다 실행됩니다.
+# 1) notice-web 폴더의 파일을 사이트 맨 위로 복사
+# 2) notice-extension 폴더를 notice-extension.zip 으로 압축해 사이트에 같이 올림 (설치 안내 화면의 받기 버튼용)
+name: Deploy Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Actions 화면에서 직접 실행할 때
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 사이트 파일 모으기와 확장 프로그램 압축
+        run: |
+          mkdir _site
+          cp -r notice-web/. _site/
+          rm -f _site/notice-extension.zip
+          zip -r -q _site/notice-extension.zip notice-extension
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
