@@ -1,0 +1,606 @@
+/* style.css
+   PC: 왼쪽 폴더 / 가운데 공지 / 오른쪽 사이트, 3단 배치
+   휴대폰(폭 768px 이하): 폴더는 위쪽 가로 탭, 사이트는 공지 아래 한 줄 배치 */
+
+/* ---------- 공통 색과 글꼴 (CSS 변수: 한 곳에서 색을 바꾸면 전체에 적용) ---------- */
+:root {
+  --bg: #f4f5f7;
+  --card: #ffffff;
+  --line: #e4e6eb;
+  --text: #1d2129;
+  --text-sub: #6b7280;
+  --accent: #2f5bea;
+  --accent-soft: #eaf0ff;
+  --ok: #16a34a;
+  --ok-soft: #e7f6ec;
+  --warn: #d97706;
+  --warn-soft: #fdf3e2;
+  --gray-soft: #eef0f3;
+  --danger: #dc2626;
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+a { color: inherit; text-decoration: none; }
+h1, h2 { margin: 0; }
+ul { list-style: none; margin: 0; padding: 0; }
+input, select, button { font: inherit; color: inherit; }
+
+.hidden { display: none !important; }
+
+/* ---------- 버튼 ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--gray-soft); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: #2349c7; }
+.btn-ghost { border-color: transparent; background: transparent; color: var(--text-sub); }
+.btn-ghost:hover { color: var(--accent); background: var(--accent-soft); }
+.btn-danger:hover { color: var(--danger); background: #fdecec; }
+.btn-block { width: 100%; height: 42px; }
+
+.icon-btn {
+  display: inline-grid; place-items: center;
+  width: 28px; height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  font-size: 18px; line-height: 1;
+  cursor: pointer;
+}
+.icon-btn:hover { background: var(--accent-soft); color: var(--accent); }
+
+.text-btn { color: var(--text-sub); font-size: 13px; }
+.text-btn:hover { color: var(--accent); }
+
+/* ---------- 맨 위 막대 ---------- */
+.topbar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+}
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.menu-btn { font-size: 15px; }
+.logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
+.logo-mark {
+  width: 26px; height: 26px;
+  display: block;
+  flex-shrink: 0;
+} /* 로고 그림: favicon.svg (탭 아이콘과 같은 그림) */
+
+/* ---------- 메인 3단 배치 ---------- */
+body.app { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+.layout {
+  flex: 1;
+  min-height: 0; /* 안쪽 칸이 스크롤되도록 꼭 필요 */
+  display: grid;
+  grid-template-columns: 220px 1fr 280px;
+}
+/* 사이드바 숨기기: body에 sidebar-hidden 클래스가 붙으면 폴더 칸을 없애고 2단으로 */
+body.sidebar-hidden .layout { grid-template-columns: 1fr 280px; }
+body.sidebar-hidden .sidebar { display: none; }
+
+/* 왼쪽: 폴더 */
+.sidebar {
+  display: flex; flex-direction: column; /* 저장 공간 막대를 맨 아래에 두기 위해 세로 배치 */
+  background: var(--card);
+  border-right: 1px solid var(--line);
+  padding: 16px 12px;
+  overflow-y: auto;
+}
+.sidebar-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 6px 10px;
+}
+.sidebar-tools { display: flex; gap: 4px; }
+.sidebar-tools .icon-btn { font-size: 14px; }
+.label { font-size: 12px; font-weight: 600; color: var(--text-sub); }
+
+.add-folder { display: flex; gap: 6px; margin-bottom: 10px; }
+.add-folder input {
+  flex: 1; min-width: 0;
+  height: 32px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 8px;
+}
+
+.folder-list { display: flex; flex-direction: column; gap: 2px; }
+/* 저장 공간 사용량 막대 */
+.storage-meter {
+  position: relative; /* 말풍선 위치의 기준 */
+  margin-top: auto; /* 남는 공간을 위에 두어 사이드바 맨 아래로 */
+  padding: 12px 6px 0;
+  cursor: default;
+  outline: none;
+}
+/* 말풍선: data-tip 글자를 막대 위에 띄웁니다. 평소에는 투명, 마우스를 올리거나 누르면 보임 */
+.storage-meter::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 0; right: 0;
+  bottom: calc(100% + 4px);
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #1d2129;
+  color: #fff;
+  font-size: 12px;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.storage-meter:hover::after,
+.storage-meter:focus::after { opacity: 1; }
+.storage-label { margin-bottom: 6px; font-size: 12px; font-weight: 600; color: var(--text-sub); }
+.storage-row { display: flex; align-items: center; gap: 8px; }
+.storage-track {
+  flex: 1; min-width: 0;
+  height: 6px;
+  border-radius: 3px;
+  background: #e3e8f0;
+  overflow: hidden;
+}
+.storage-fill {
+  height: 100%;
+  min-width: 3px; /* 아주 적게 써도 막대가 조금은 보이도록 */
+  border-radius: 3px;
+  transition: width 0.4s;
+}
+.storage-fill.level-ok { background: var(--ok); }
+.storage-fill.level-warn { background: var(--warn); }
+.storage-fill.level-danger { background: var(--danger); }
+/* 조회 실패: 회색 빗금 (45도로 기울인 진회색, 연회색 줄무늬를 반복) */
+.storage-fill.level-unknown {
+  background: repeating-linear-gradient(45deg, #b4b9c2 0 3px, #e3e8f0 3px 6px);
+}
+.storage-percent { flex-shrink: 0; font-size: 12px; color: var(--text-sub); }
+
+.folder-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%;
+  padding: 9px 10px;
+  border: none; border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.folder-btn:hover { background: var(--gray-soft); }
+.folder-btn.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.badge {
+  min-width: 20px; height: 20px; padding: 0 6px;
+  display: grid; place-items: center;
+  border-radius: 10px;
+  background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 700;
+}
+
+/* 가운데: 공지 */
+.content {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 16px 24px;
+  min-height: 0;
+  overflow: hidden;
+}
+.content-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.content-head h1 { font-size: 20px; }
+.sub { margin: 2px 0 0; color: var(--text-sub); font-size: 13px; }
+
+
+.panel {
+  flex: 1;
+  min-height: 0;
+  display: flex; flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.panel-new { flex: 3; }  /* 새로운 공지 : 확인한 공지 = 3 : 2 */
+.panel-read { flex: 2; }
+
+/* 패널 제목 줄 (작게) */
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 8px 5px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.panel-head h2 { font-size: 13px; }
+.panel-head .btn { height: 26px; padding: 0 8px; font-size: 12px; }
+.count { color: var(--accent); margin-left: 2px; }
+.panel-read .count { color: var(--text-sub); }
+.panel-tools { display: flex; align-items: center; gap: 2px; }
+.check-all { display: flex; align-items: center; gap: 4px; margin-right: 4px; color: var(--text-sub); font-size: 12px; cursor: pointer; }
+
+.notice-list { flex: 1; overflow-y: auto; } /* 공지가 많으면 이 칸 안에서 스크롤 */
+.notice {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.notice:last-child { border-bottom: none; }
+.notice:hover { background: #fafbfc; }
+.notice-check { margin: 0; }
+/* 제목은 왼쪽, 사이트 이름과 날짜는 같은 줄 오른쪽 */
+.notice-body { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; }
+.notice-title {
+  flex: 1; min-width: 0;
+  display: block;
+  color: var(--text-sub);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; /* 긴 제목은 ... 로 줄임 */
+}
+.notice-title:hover { color: var(--accent); text-decoration: underline; }
+.notice.unread .notice-title { color: var(--text); font-weight: 600; }
+.notice.unread .notice-title::before {
+  content: "";
+  display: inline-block;
+  width: 6px; height: 6px; margin: 0 7px 2px 0;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.notice-meta { flex-shrink: 0; display: flex; gap: 8px; color: var(--text-sub); font-size: 12px; }
+.site-tag { padding: 0 6px; border-radius: 4px; background: var(--gray-soft); }
+
+.empty { padding: 24px 14px; text-align: center; color: var(--text-sub); font-size: 13px; }
+
+/* ---------- 체험 화면 안내 막대 (로그인하지 않았을 때) ---------- */
+.demo-banner {
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 20px;
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  font-size: 13px;
+}
+.demo-banner b { color: var(--accent); margin-right: 6px; }
+.demo-banner .btn { flex-shrink: 0; height: 30px; font-size: 13px; }
+@media (max-width: 768px) {
+  .demo-banner { padding: 8px 14px; font-size: 12px; }
+}
+
+/* ---------- 스크랩 ---------- */
+/* 왼쪽 "스크랩" 항목: "폴더" 글자와 같은 들여쓰기, 폴더 목록과 줄로 구분 */
+.scrap-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%;
+  margin-top: 14px;
+  padding: 9px 10px 9px 6px;
+  border: none; border-top: 1px solid var(--line); border-radius: 0;
+  background: transparent;
+  font-weight: 600; text-align: left;
+  cursor: pointer;
+}
+.scrap-nav:hover { background: var(--gray-soft); }
+.scrap-nav.active { background: var(--accent-soft); color: var(--accent); border-radius: 8px; }
+.scrap-nav-name { display: flex; align-items: center; gap: 6px; }
+.scrap-star { color: #f5a524; font-size: 15px; }
+.badge-gray { background: #c3c8d1; }
+.scrap-nav.active .badge-gray { background: var(--accent); }
+
+/* 공지 줄 오른쪽 끝의 별 버튼: 빈 별은 회색, 스크랩한 공지는 노란 별 */
+.scrap-btn {
+  flex-shrink: 0;
+  width: 26px; height: 26px;
+  border: none; border-radius: 6px;
+  background: transparent;
+  color: #b4b9c2;
+  font-size: 16px; line-height: 1;
+  cursor: pointer;
+}
+.scrap-btn:hover { background: var(--gray-soft); color: #f5a524; }
+.scrap-btn.on { color: #f5a524; }
+.folder-tag { padding: 0 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
+
+/* 스크랩 화면: 공지 2칸과 오른쪽 사이트 칸을 숨기고, 스크랩 목록이 가운데를 모두 씀 */
+body.scrap-mode .panel-new,
+body.scrap-mode .panel-read,
+body.scrap-mode .sites { display: none; }
+body.scrap-mode .layout { grid-template-columns: 220px 1fr; }
+body.scrap-mode.sidebar-hidden .layout { grid-template-columns: 1fr; }
+
+/* ---------- 사이트 칸 맨 아래 오른쪽: 확장 프로그램 받기 ---------- */
+.ext-download {
+  align-self: flex-end; /* 오른쪽 끝 */
+  margin-top: auto;     /* 남는 공간을 위에 두어 칸 맨 아래로 */
+  display: flex; align-items: center; gap: 6px;
+  flex-shrink: 0;
+  height: 36px; padding: 0 14px 0 11px;
+  border: 1px solid var(--line); border-radius: 18px;
+  background: var(--card);
+  color: var(--text-sub);
+  font-size: 13px; font-weight: 600;
+}
+.ext-download:hover { color: var(--accent); border-color: var(--accent); }
+
+/* 오른쪽: 사이트 */
+.sites {
+  background: var(--card);
+  border-left: 1px solid var(--line);
+  padding: 16px;
+  overflow-y: auto;
+  display: flex; flex-direction: column; /* 확장 프로그램 받기 버튼을 맨 아래에 두기 위해 세로 배치 */
+}
+.sites-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.sites-head h2 { font-size: 15px; }
+
+.site-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.site {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.site-info { min-width: 0; }
+.site-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.site-keywords { color: var(--text-sub); font-size: 12px; }
+
+/* 수집 상태 표시 */
+.status {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+  white-space: nowrap;
+}
+.status-ok { background: var(--ok-soft); color: var(--ok); }
+.status-check { background: var(--warn-soft); color: var(--warn); }
+.status-norule { background: var(--gray-soft); color: var(--text-sub); }
+
+/* ---------- 화면 아래 플로팅 알림 ---------- */
+.toast {
+  position: fixed; /* 스크롤과 상관없이 화면의 같은 자리에 떠 있음 */
+  left: 50%; bottom: 24px;
+  transform: translateX(-50%); /* 가로 가운데 맞춤 */
+  z-index: 100;
+  display: flex; align-items: center; gap: 12px;
+  max-width: calc(100% - 32px);
+  padding: 10px 10px 10px 16px;
+  border-radius: 10px;
+  background: #3a2a10;
+  color: #fff3dc;
+  font-size: 13px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+.toast::before { content: "!"; display: grid; place-items: center; flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--warn); color: #fff; font-weight: 700; font-size: 12px; }
+.toast-close {
+  flex-shrink: 0;
+  width: 26px; height: 26px;
+  border: none; border-radius: 6px;
+  background: transparent; color: #fff3dc;
+  font-size: 18px; line-height: 1;
+  cursor: pointer;
+}
+.toast-close:hover { background: rgba(255, 255, 255, 0.15); }
+
+/* ---------- 로그인 화면 ---------- */
+.login-page { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+.login-card {
+  width: 100%; max-width: 380px;
+  padding: 32px 28px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.login-logo { font-size: 20px; }
+.login-desc { margin: 8px 0 24px; color: var(--text-sub); }
+.field { display: block; margin-bottom: 14px; }
+.field span { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600; }
+.field input {
+  width: 100%; height: 42px; padding: 0 12px;
+  border: 1px solid var(--line); border-radius: 8px;
+}
+.field input:focus, .add-folder input:focus, .row input:focus, select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.form-error { color: var(--danger); font-size: 13px; margin: 0 0 10px; }
+.login-foot { margin: 18px 0 0; text-align: center; color: var(--text-sub); font-size: 13px; }
+.login-foot a { color: var(--accent); }
+
+/* ---------- 설정 화면 ---------- */
+.settings { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
+.settings-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.settings-head h1 { font-size: 20px; }
+.folder-select { display: flex; align-items: center; gap: 8px; color: var(--text-sub); }
+.folder-select select {
+  height: 34px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--card);
+}
+.help { color: var(--text-sub); font-size: 13px; margin: 0 0 16px; }
+
+.site-table {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.row {
+  display: grid;
+  grid-template-columns: 1.2fr 2fr 1.4fr 100px 64px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.row:last-child { border-bottom: none; }
+/* 폴더 설정 화면: 순서 / 폴더 이름 / 사이트 수 / 삭제 */
+.row.folder-row { grid-template-columns: 48px 1fr 100px 64px; }
+
+/* 순서 바꾸기 손잡이: 가로 회색 줄 3개 */
+.drag-handle {
+  display: flex; flex-direction: column; justify-content: center; gap: 4px;
+  width: 32px; height: 32px;
+  padding: 0 8px;
+  border-radius: 6px;
+  cursor: grab;
+  touch-action: none; /* 휴대폰에서 끌 때 화면이 같이 스크롤되지 않도록 */
+}
+.drag-handle span { display: block; height: 2px; border-radius: 1px; background: #b4b9c2; }
+.drag-handle:hover { background: var(--gray-soft); }
+.drag-handle:hover span { background: var(--text-sub); }
+
+/* 끌고 있는 줄 */
+.folder-row.dragging {
+  position: relative; z-index: 1;
+  background: var(--accent-soft);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+.folder-row.dragging .drag-handle { cursor: grabbing; }
+body.is-dragging { user-select: none; cursor: grabbing; } /* 끄는 동안 글자가 드래그 선택되지 않도록 */
+
+.del-btn:disabled { opacity: 0.35; cursor: default; }
+.site-count { color: var(--text-sub); }
+.row-head { background: #fafbfc; color: var(--text-sub); font-size: 12px; font-weight: 600; }
+.row input {
+  width: 100%; height: 34px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 8px;
+}
+.cell-label { display: none; } /* PC에서는 위쪽 제목 줄이 있으므로 숨김 */
+.del-btn {
+  height: 30px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--card); color: var(--text-sub);
+  cursor: pointer;
+}
+.del-btn:hover { color: var(--danger); border-color: #f3c0c0; background: #fdecec; }
+
+.add-row {
+  width: 100%;
+  margin-top: 12px;
+  height: 44px;
+  border: 1px dashed #c3c8d1;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+.add-row:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+/* ---------- 휴대폰 화면 (폭 768px 이하) ---------- */
+/* 미디어 쿼리: 화면 폭이 조건에 맞을 때만 안쪽 규칙을 적용합니다 */
+@media (max-width: 768px) {
+  body.app { height: auto; overflow: visible; }
+  .topbar { padding: 0 14px; }
+
+  .layout { display: block; }
+
+  /* 폴더: 위쪽 가로 탭 */
+  .sidebar {
+    display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    overflow: visible;
+  }
+  .sidebar-head { order: 3; padding: 0; }
+  /* 휴대폰: 스크랩은 폴더 탭 옆 알약 모양 */
+  .scrap-nav {
+    order: 2;
+    width: auto; flex-shrink: 0;
+    gap: 6px;
+    margin: 0;
+    padding: 6px 12px;
+    border: 1px solid var(--line); border-radius: 20px;
+    white-space: nowrap;
+  }
+  .scrap-nav.active { border-color: var(--accent); border-radius: 20px; }
+  .content-head { flex-wrap: wrap; }
+  .ext-download { height: 32px; font-size: 12px; }
+  .sidebar-head .label { display: none; }
+  body.sidebar-hidden .sidebar { display: none; }
+  .folder-list {
+    order: 1;
+    flex: 1; min-width: 0;
+    flex-direction: row;
+    gap: 6px;
+    overflow-x: auto; /* 폴더가 많으면 옆으로 밀어서 봄 */
+  }
+  .folder-btn {
+    width: auto; flex-shrink: 0;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .folder-btn.active { border-color: var(--accent); }
+  .add-folder { order: 3; width: 100%; margin: 0; }
+  /* 휴대폰: 저장 공간 막대는 폴더 탭 아래 한 줄로 */
+  .storage-meter { order: 4; width: 100%; margin-top: 0; padding: 2px 0 0; }
+  .storage-label { display: none; }
+
+  /* 공지 */
+  .content { padding: 16px 14px; overflow: visible; }
+  .panel { flex: none; }
+  .panel-new .notice-list { max-height: 55vh; }
+  .panel-read .notice-list { max-height: 36vh; }
+  /* 휴대폰은 폭이 좁아 사이트 이름과 날짜를 제목 아래로 */
+  .notice-body { flex-direction: column; align-items: stretch; gap: 1px; }
+  .toast { left: 16px; right: 16px; bottom: 16px; transform: none; max-width: none; }
+  .panel-head { flex-wrap: wrap; gap: 6px; }
+
+  /* 사이트: 공지 아래로, 한 줄 가로 배치 */
+  .sites { border-left: none; border-top: 1px solid var(--line); padding: 14px; }
+  .site-list { flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
+  .site { flex-shrink: 0; max-width: 240px; }
+
+  /* 설정: 줄을 카드 모양으로 */
+  .settings { padding: 16px 14px 40px; }
+  .settings-head { flex-wrap: wrap; }
+  .row-head { display: none; }
+  .row { grid-template-columns: 1fr; gap: 8px; padding: 14px; }
+  /* 폴더 설정은 항목이 적어 휴대폰에서도 한 줄: 순서 / 이름 / 삭제 */
+  .row.folder-row { grid-template-columns: auto 1fr auto; gap: 8px; padding: 10px 12px; }
+  .folder-row .cell-label, .folder-row .cell-count { display: none; }
+  .cell-label { display: block; margin-bottom: 2px; font-size: 12px; font-weight: 600; color: var(--text-sub); }
+  .cell-del { text-align: right; }
+}
+
+
+
+/* 비밀번호 찾기, 새 비밀번호 화면 */
+.form-ok { color: #16a34a; font-size: 13px; margin: 0 0 10px; }
+.forgot-box { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+
+/* 로그인 화면: 로그인 / 회원가입 / 비밀번호 변경 탭 */
+.login-tabs { display: flex; gap: 4px; margin: 16px 0 14px; border-bottom: 1px solid var(--line); }
+.login-tab {
+  flex: 1; padding: 8px 0; border: none; background: none; cursor: pointer;
+  font: inherit; font-size: 13px; color: var(--text-sub);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.login-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+/* 확장 프로그램 설치 안내 */
+.install-card { max-width: 520px; }
+.install-download { display: block; text-align: center; line-height: 40px; height: 40px; text-decoration: none; margin: 14px 0 6px; }
+.install-steps { margin: 14px 0; padding-left: 20px; line-height: 1.7; font-size: 14px; }
+.install-steps code, .install-note code { background: var(--gray-soft, #eef0f3); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+.install-note { font-size: 12px; color: var(--text-sub); line-height: 1.7; }
+.topbar-right { display: flex; align-items: center; gap: 4px; }

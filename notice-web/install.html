@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>확장 프로그램 설치 | 공지 모음</title>
+  <!-- 탭과 즐겨찾기에 보이는 아이콘 -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="login-page">
+
+  <!-- 수집용 크롬 확장 프로그램 설치 안내 (로그인 없이 볼 수 있는 화면) -->
+  <main class="login-card install-card">
+    <div class="logo login-logo"><img class="logo-mark" src="favicon.svg" alt="">공지 모음 수집기 설치</div>
+    <p class="login-desc">공지는 PC 크롬의 확장 프로그램이 12시간마다 모읍니다. PC 한 대에 한 번만 설치하면 됩니다.</p>
+
+    <a class="btn btn-primary btn-block install-download" href="notice-extension.zip" download>확장 프로그램 받기 (zip)</a>
+
+    <ol class="install-steps">
+      <li>받은 zip 파일의 압축을 풀고, 나온 <b>notice-extension</b> 폴더를 지우지 않을 곳(예: 문서 폴더)에 둡니다.</li>
+      <li>크롬 주소창에 <code>chrome://extensions</code> 를 입력합니다.</li>
+      <li>오른쪽 위 <b>개발자 모드</b>를 켭니다.</li>
+      <li><b>압축해제된 확장 프로그램을 로드합니다</b>를 누르고 notice-extension 폴더를 고릅니다.</li>
+      <li>주소창 오른쪽 퍼즐 모양에서 <b>공지 모음 수집기</b>를 고정하면 아이콘이 보입니다.</li>
+      <li>아이콘을 눌러 이 웹사이트와 같은 이메일, 비밀번호로 로그인합니다.</li>
+      <li>공지를 모을 게시판을 크롬으로 열고, 아이콘의 <b>이 페이지를 게시판으로 추가</b>를 누른 뒤 공지 제목 하나를 누르고 저장합니다.</li>
+    </ol>
+
+    <p class="install-note">
+      새 버전이 나오면 zip을 다시 받아 같은 폴더에 덮어쓰고, <code>chrome://extensions</code> 에서 수집기의 새로고침(↻)을 누릅니다.<br>
+      창을 모두 닫아도 수집하려면 크롬 설정 <code>chrome://settings/system</code> 에서 "Google Chrome이 닫혀도 백그라운드 앱 계속 실행"을 켭니다.
+    </p>
+
+    <p class="login-foot"><a href="index.html">공지 화면으로</a></p>
+  </main>
+</body>
+</html>

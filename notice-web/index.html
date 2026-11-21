@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <!-- 휴대폰에서 화면 폭에 맞게 보이도록 하는 설정 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>공지 모음</title>
+  <!-- 탭과 즐겨찾기에 보이는 아이콘 -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="app">
+
+  <!-- 맨 위 막대 -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button id="toggle-sidebar" class="icon-btn menu-btn" title="폴더 목록 숨기기/보이기">☰</button>
+      <a href="index.html" class="logo"><img class="logo-mark" src="favicon.svg" alt="">공지 모음</a>
+    </div>
+    <div class="topbar-right">
+      <a href="#" class="text-btn" onclick="logout(); return false;">로그아웃</a>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- 왼쪽: 폴더 -->
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <span class="label">폴더</span>
+        <div class="sidebar-tools">
+          <a id="folder-settings-link" href="folder-settings.html" class="icon-btn" title="폴더 설정">⚙</a>
+          <button id="add-folder-btn" class="icon-btn" title="폴더 추가">+</button>
+        </div>
+      </div>
+      <form id="add-folder-form" class="add-folder hidden">
+        <input id="new-folder-name" type="text" placeholder="새 폴더 이름" maxlength="20">
+        <button type="submit" class="btn btn-primary">추가</button>
+      </form>
+      <nav id="folder-list" class="folder-list"></nav>
+
+      <!-- 스크랩: 폴더와 같은 높이의 별도 항목. 누르면 가운데에 스크랩 목록 -->
+      <button id="scrap-nav" class="scrap-nav">
+        <span class="scrap-nav-name"><span class="scrap-star">★</span>스크랩</span>
+        <span id="scrap-nav-count" class="badge badge-gray hidden"></span>
+      </button>
+
+      <!-- 저장 공간 사용량 막대 (사이드바 맨 아래) -->
+      <!-- tabindex="0": 휴대폰에서 눌렀을 때도 말풍선이 보이도록 (누르면 선택된 상태가 됨) -->
+      <div id="storage-meter" class="storage-meter hidden" tabindex="0">
+        <div class="storage-label">저장 공간</div>
+        <div class="storage-row">
+          <div class="storage-track"><div id="storage-fill" class="storage-fill"></div></div>
+          <span id="storage-percent" class="storage-percent"></span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 가운데: 공지 -->
+    <main class="content">
+      <div class="content-head">
+        <div>
+          <h1 id="folder-title">불러오는 중...</h1>
+          <p id="folder-sub" class="sub"></p>
+        </div>
+        <!-- 스크랩 화면에서만 보이는 폴더 고르기 (전체 / 폴더별) -->
+        <label id="scrap-filter" class="folder-select hidden">
+          <span>폴더</span>
+          <select id="scrap-folder"></select>
+        </label>
+      </div>
+
+      <!-- 스크랩 목록 (스크랩 화면에서만 보임) -->
+      <section id="panel-scrap" class="panel panel-scrap hidden">
+        <div class="panel-head">
+          <h2>스크랩 <span id="scrap-count" class="count"></span></h2>
+          <div class="panel-tools">
+            <label class="check-all"><input type="checkbox" id="scrap-all"> 전체 선택</label>
+            <button id="scrap-delete" class="btn btn-ghost btn-danger">스크랩 해제</button>
+          </div>
+        </div>
+        <ul id="scrap-list" class="notice-list"></ul>
+      </section>
+
+      <section class="panel panel-new">
+        <div class="panel-head">
+          <h2>새로운 공지 <span id="new-count" class="count"></span></h2>
+          <div class="panel-tools">
+            <label class="check-all"><input type="checkbox" id="new-all"> 전체 선택</label>
+            <button id="new-delete" class="btn btn-ghost btn-danger">선택 삭제</button>
+            <button id="new-read" class="btn btn-ghost">읽음</button>
+            <button id="new-scrap" class="btn btn-ghost">스크랩</button>
+          </div>
+        </div>
+        <ul id="new-list" class="notice-list"></ul>
+      </section>
+
+      <section class="panel panel-read">
+        <div class="panel-head">
+          <h2>확인한 공지 <span id="read-count" class="count"></span></h2>
+          <div class="panel-tools">
+            <label class="check-all"><input type="checkbox" id="read-all"> 전체 선택</label>
+            <button id="read-delete" class="btn btn-ghost btn-danger">선택 삭제</button>
+            <button id="read-unread" class="btn btn-ghost">읽지 않음</button>
+            <button id="read-scrap" class="btn btn-ghost">스크랩</button>
+          </div>
+        </div>
+        <ul id="read-list" class="notice-list"></ul>
+      </section>
+    </main>
+
+    <!-- 오른쪽: 이 폴더의 사이트 -->
+    <aside class="sites">
+      <div class="sites-head">
+        <h2>등록된 사이트</h2>
+        <a id="settings-link" href="settings.html" class="btn">설정</a>
+      </div>
+      <ul id="site-list" class="site-list"></ul>
+      <!-- 사이트 칸 맨 아래 오른쪽: 확장 프로그램 받기 (설치 안내 화면으로 이동, 그 화면에서 zip 받기) -->
+      <a href="install.html" class="ext-download" title="크롬 확장 프로그램 받기와 설치 방법">
+        <!-- zip 파일 아이콘: 문서 모양 + 지퍼 -->
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <path d="M14 2v6h6"/>
+          <path d="M10 3.5h1.5M8.5 5.5H10M10 7.5h1.5M8.5 9.5H10M10 11.5h1.5"/>
+          <rect x="8.5" y="14" width="3.5" height="4.5" rx="0.8"/>
+        </svg>
+        확장 프로그램 다운
+      </a>
+    </aside>
+
+  </div>
+
+  <!-- 저장 공간 알림: 화면 아래에 떠 있는 알림, x로 닫기 -->
+  <div id="storage-alert" class="toast hidden">
+    <span id="storage-alert-text"></span>
+    <button id="storage-alert-close" class="toast-close" title="알림 닫기">×</button>
+  </div>
+
+  <!-- 화면을 그리는 코드 (Supabase 설정을 먼저 불러온 뒤 실행) -->
+  <!-- Supabase 라이브러리 (인터넷에서 불러옴) 와 접속 설정 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="demo.js"></script> <!-- 로그인하지 않았을 때 쓰는 체험용 예시 데이터 -->
+  <script src="supabase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

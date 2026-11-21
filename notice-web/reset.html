@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>새 비밀번호 | 공지 모음</title>
+  <!-- 탭과 즐겨찾기에 보이는 아이콘 -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="login-page">
+
+  <!-- 비밀번호 재설정 메일의 링크를 누르면 열리는 화면입니다. -->
+  <main class="login-card">
+    <div class="logo login-logo"><img class="logo-mark" src="favicon.svg" alt="">공지 모음</div>
+    <p class="login-desc">새 비밀번호를 정하세요.</p>
+
+    <form id="reset-form">
+      <label class="field">
+        <span>새 비밀번호</span>
+        <input type="password" id="new-password" placeholder="6자 이상" required autocomplete="new-password">
+      </label>
+      <label class="field">
+        <span>비밀번호 확인</span>
+        <input type="password" id="password-check" placeholder="한 번 더 입력" required autocomplete="new-password">
+      </label>
+      <p id="reset-error" class="form-error hidden"></p>
+      <p id="reset-ok" class="form-ok hidden"></p>
+      <button type="submit" class="btn btn-primary btn-block">비밀번호 바꾸기</button>
+    </form>
+    <p class="login-foot"><a href="login.html">로그인 화면으로</a></p>
+  </main>
+
+  <!-- 주소 # 뒷부분은 로그인 도구가 읽고 바로 지우므로, 먼저 복사해 둡니다. -->
+  <script>window.LINK_HASH = location.hash;</script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+    function showError(text) { $("#reset-error").textContent = text; $("#reset-error").classList.remove("hidden"); }
+
+    // 메일 링크로 들어오면 주소(#access_token=...)에 임시 로그인 정보가 담겨 있고,
+    // supabase-config.js 의 db 가 그것을 읽어 로그인 상태로 만듭니다.
+    // 링크가 만료되었거나 이미 쓴 링크면 주소에 error_description 이 들어 있습니다.
+    const linkError = new URLSearchParams(window.LINK_HASH.slice(1)).get("error_description");
+
+    authReady.then((session) => {
+      if (!session) {
+        showError(linkError ? "링크를 쓸 수 없습니다: " + linkError + " 로그인 화면에서 메일을 다시 받으세요." : "메일의 링크로 들어와야 합니다. 로그인 화면에서 재설정 메일을 받으세요.");
+        $("#reset-form button").disabled = true;
+      }
+    });
+
+    $("#reset-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      $("#reset-error").classList.add("hidden");
+      const next = $("#new-password").value;
+      if (next.length < 6) return showError("비밀번호는 6자 이상이어야 합니다.");
+      if (next !== $("#password-check").value) return showError("비밀번호 확인이 다릅니다.");
+      const { error } = await db.auth.updateUser({ password: next });
+      if (error) return showError("바꾸지 못했습니다: " + error.message);
+      $("#reset-ok").textContent = "비밀번호를 바꿨습니다. 공지 화면으로 이동합니다.";
+      $("#reset-ok").classList.remove("hidden");
+      setTimeout(() => location.replace("index.html"), 1200);
+    });
+  </script>
+</body>
+</html>

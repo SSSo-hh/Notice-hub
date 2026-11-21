@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>게시판 설정 | 공지 모음</title>
+  <!-- 탭과 즐겨찾기에 보이는 아이콘 -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <a href="index.html" class="logo"><img class="logo-mark" src="favicon.svg" alt="">공지 모음</a>
+    <a id="back-link" href="index.html" class="text-btn">공지 화면으로</a>
+  </header>
+
+  <main class="settings">
+    <div class="settings-head">
+      <h1>게시판 설정</h1>
+      <label class="folder-select">
+        <span>폴더</span>
+        <select id="folder-select"></select>
+      </label>
+    </div>
+
+    <p class="help">
+      키워드는 쉼표로 구분합니다. 비워 두면 그 게시판의 새 공지를 모두 가져옵니다.<br>
+      찾기 규칙은 PC 크롬 확장의 "제목 고르기"에서 만들어지며, 그 전까지는 미설정으로 표시됩니다.
+    </p>
+
+    <div class="site-table">
+      <div class="row row-head">
+        <span>사이트 이름</span>
+        <span>게시판 주소</span>
+        <span>키워드</span>
+        <span>찾기 규칙</span>
+        <span></span>
+      </div>
+      <div id="site-rows"></div>
+    </div>
+
+    <button id="add-row" class="add-row">+ 사이트 추가</button>
+  </main>
+
+  <!-- Supabase 라이브러리 (인터넷에서 불러옴) 와 접속 설정 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="demo.js"></script> <!-- 로그인하지 않았을 때 쓰는 체험용 예시 데이터 -->
+  <script src="supabase-config.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>로그인 | 공지 모음</title>
+  <!-- 탭과 즐겨찾기에 보이는 아이콘 -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="login-page">
+
+  <main class="login-card">
+    <!-- 로고를 누르면 체험 화면(로그인 없이 보는 홈)으로 -->
+    <a href="index.html" class="logo login-logo"><img class="logo-mark" src="favicon.svg" alt="">공지 모음</a>
+    <p class="login-desc">내가 정한 게시판의 새 공지를 한곳에서 확인합니다.</p>
+
+    <!-- 로그인 / 회원가입: 같은 칸을 쓰고, 모드에 따라 보이는 칸과 버튼 글자만 바꿉니다.
+         비밀번호를 바꿀 때는 로그인 탭의 "비밀번호를 잊으셨나요?"로 재설정 메일을 받습니다. -->
+    <div class="login-tabs">
+      <button type="button" class="login-tab active" data-mode="login">로그인</button>
+      <button type="button" class="login-tab" data-mode="signup">회원가입</button>
+    </div>
+
+    <form id="login-form">
+      <label class="field">
+        <span>이메일</span>
+        <input type="email" id="email" placeholder="you@example.com" required autocomplete="username">
+      </label>
+      <label class="field">
+        <span id="password-label">비밀번호</span>
+        <input type="password" id="password" placeholder="비밀번호" required autocomplete="current-password">
+      </label>
+      <label class="field mode-only" data-for="signup">
+        <span>비밀번호 확인</span>
+        <input type="password" id="password-check" placeholder="한 번 더 입력" autocomplete="new-password">
+      </label>
+      <p id="login-error" class="form-error hidden"></p>
+      <p id="login-ok" class="form-ok hidden"></p>
+      <button type="submit" id="submit-btn" class="btn btn-primary btn-block">로그인</button>
+    </form>
+
+    <!-- 비밀번호 찾기 (로그인 탭에서만): 이메일로 재설정 링크를 받습니다 -->
+    <div id="forgot-area">
+      <p class="login-foot"><a href="#" id="forgot-link">비밀번호를 잊으셨나요?</a></p>
+      <form id="forgot-form" class="forgot-box hidden">
+        <label class="field">
+          <span>가입한 이메일</span>
+          <input type="email" id="forgot-email" placeholder="you@example.com" required>
+        </label>
+        <p id="forgot-msg" class="form-ok hidden"></p>
+        <p id="forgot-error" class="form-error hidden"></p>
+        <button type="submit" class="btn btn-block">재설정 메일 보내기</button>
+      </form>
+    </div>
+
+    <p class="login-foot"><a href="index.html">로그인 없이 체험 화면 둘러보기</a></p>
+    <p class="login-foot"><a href="install.html">수집용 크롬 확장 프로그램 설치 안내</a></p>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script>
+    // 이미 로그인되어 있으면 바로 공지 화면으로
+    authReady.then((session) => { if (session) location.replace("index.html"); });
+
+    let mode = "login";
+    const $ = (sel) => document.querySelector(sel);
+    const BUTTON_TEXT = { login: "로그인", signup: "회원가입" };
+
+    // 모드 바꾸기: 해당 모드의 칸만 보이게
+    function setMode(next) {
+      mode = next;
+      document.querySelectorAll(".login-tab").forEach((t) => t.classList.toggle("active", t.dataset.mode === mode));
+      document.querySelectorAll(".mode-only").forEach((el) => el.classList.toggle("hidden", !el.dataset.for.split(" ").includes(mode)));
+      $("#submit-btn").textContent = BUTTON_TEXT[mode];
+      $("#forgot-area").classList.toggle("hidden", mode !== "login");
+      showMessage("", "");
+    }
+    document.querySelectorAll(".login-tab").forEach((t) => t.addEventListener("click", () => setMode(t.dataset.mode)));
+    setMode("login");
+
+    function showMessage(error, ok) {
+      $("#login-error").textContent = error;
+      $("#login-error").classList.toggle("hidden", !error);
+      $("#login-ok").textContent = ok;
+      $("#login-ok").classList.toggle("hidden", !ok);
+    }
+
+    $("#login-form").addEventListener("submit", async (event) => {
+      event.preventDefault(); // 폼 기본 동작(페이지 새로고침)을 막습니다.
+      const email = $("#email").value.trim();
+      const password = $("#password").value;
+      const check = $("#password-check").value;
+      showMessage("", "");
+
+      if (mode === "login") {
+        const { error } = await db.auth.signInWithPassword({ email, password });
+        if (error) return showMessage("이메일 또는 비밀번호를 확인해 주세요.", "");
+        return location.replace("index.html");
+      }
+
+      if (mode === "signup") {
+        if (password.length < 6) return showMessage("비밀번호는 6자 이상이어야 합니다.", "");
+        if (password !== check) return showMessage("비밀번호 확인이 다릅니다.", "");
+        const { data, error } = await db.auth.signUp({ email, password });
+        if (error) return showMessage("회원가입하지 못했습니다: " + error.message, "");
+        // 메일 확인을 끈 설정이면 바로 로그인 상태가 됩니다.
+        if (data.session) return location.replace("index.html");
+        return showMessage("", "가입 확인 메일을 보냈습니다. 메일의 링크를 누른 뒤 로그인해 주세요.");
+      }
+
+    });
+
+    // 비밀번호 찾기: 링크를 누르면 칸을 펼칩니다.
+    $("#forgot-link").addEventListener("click", (event) => {
+      event.preventDefault();
+      $("#forgot-form").classList.toggle("hidden");
+      $("#forgot-email").value = $("#email").value;
+    });
+
+    // 재설정 메일 보내기: 메일 속 링크를 누르면 reset.html(새 비밀번호 화면)로 돌아옵니다.
+    $("#forgot-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      $("#forgot-msg").classList.add("hidden");
+      $("#forgot-error").classList.add("hidden");
+      const resetUrl = location.href.replace(/login\.html.*$/, "reset.html");
+      const { error } = await db.auth.resetPasswordForEmail($("#forgot-email").value.trim(), { redirectTo: resetUrl });
+      if (error) {
+        console.error(error);
+        $("#forgot-error").textContent = "메일을 보내지 못했습니다: " + error.message;
+        $("#forgot-error").classList.remove("hidden");
+        return;
+      }
+      $("#forgot-msg").textContent = "재설정 메일을 보냈습니다. 메일의 링크를 눌러 새 비밀번호를 정하세요.";
+      $("#forgot-msg").classList.remove("hidden");
+    });
+  </script>
+</body>
+</html>
