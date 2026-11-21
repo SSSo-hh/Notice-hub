@@ -359,7 +359,7 @@ async function collectAndSave() {
 // 처음 수집, 옛 공지 가져오기에서 읽을 페이지 수 (팝업에서 고름, 기본 5)
 async function getPageSetting() {
   const { firstPages } = await chrome.storage.local.get("firstPages");
-  return Number(firstPages) || 5;
+  return Number(firstPages) || 3; // 팝업에서 고르지 않았으면 3페이지
 }
 
 // 고른 게시판만 수집합니다.

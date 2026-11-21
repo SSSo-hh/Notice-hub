@@ -20,13 +20,7 @@ body {
 
 .head { padding: 12px 14px; border-bottom: 1px solid var(--line); }
 .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
-.logo-mark {
-  width: 22px; height: 22px;
-  display: grid; place-items: center;
-  border-radius: 6px;
-  background: var(--accent); color: #fff;
-  font-size: 12px;
-}
+.logo-mark { width: 22px; height: 22px; display: block; flex-shrink: 0; } /* 로고 그림: icons/logo.svg (웹사이트 로고와 같은 그림) */
 
 .block { padding: 12px 14px; border-bottom: 1px solid var(--line); }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }

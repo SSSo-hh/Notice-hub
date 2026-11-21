@@ -22,7 +22,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 // ---------- ⑦-3 제목 고르기 ----------
 // 탭마다 고르기 정보를 chrome.storage.session 에 둡니다. (서비스 워커가 잠들었다 깨어나도 유지)
-//   ctx_탭번호: { folderId, name, siteId }  (어떤 폴더에, 어떤 이름으로, 기존 게시판이면 그 id)
+//   ctx_탭번호: { folderId, name, siteId, keywords }  (어떤 폴더에, 어떤 이름으로, 기존 게시판이면 그 id, 새 게시판의 키워드)
 //   pick_탭번호: { areas, sampleTitle, frameUrl, count }  (마지막으로 고른 결과)
 async function getSession(key) {
   const data = await chrome.storage.session.get(key);
@@ -30,8 +30,8 @@ async function getSession(key) {
 }
 
 // 탭에 고르기 화면을 넣습니다. allFrames: iframe 안 게시판도 고를 수 있게 모든 프레임에 넣음
-async function startPicker({ tabId, folderId, name, siteId }) {
-  await chrome.storage.session.set({ ["ctx_" + tabId]: { folderId, name, siteId: siteId || null } });
+async function startPicker({ tabId, folderId, name, siteId, keywords }) {
+  await chrome.storage.session.set({ ["ctx_" + tabId]: { folderId, name, siteId: siteId || null, keywords: keywords || [] } });
   await chrome.storage.session.remove("pick_" + tabId);
   await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, files: ["rules.js", "picker.js"] });
 }
@@ -69,7 +69,7 @@ async function savePick(tabId) {
     const { error } = await db.from("sites").update(row).eq("id", ctx.siteId);
     if (error) throw error;
   } else {
-    const { data, error } = await db.from("sites").insert({ ...row, folder_id: ctx.folderId, name: ctx.name, keywords: [] }).select("id").single();
+    const { data, error } = await db.from("sites").insert({ ...row, folder_id: ctx.folderId, name: ctx.name, keywords: ctx.keywords || [] }).select("id").single();
     if (error) throw error;
     savedId = data.id;
   }

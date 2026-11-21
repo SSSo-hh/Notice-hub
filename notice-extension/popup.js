@@ -129,6 +129,7 @@ document.querySelector("#add-board").addEventListener("click", async () => {
     select.appendChild(option);
   });
   document.querySelector("#add-name").value = (currentTab.title || "").slice(0, 30);
+  document.querySelector("#add-keywords").value = "";
   document.querySelector("#add-form").classList.remove("hidden");
   document.querySelector("#add-board").classList.add("hidden");
 });
@@ -137,11 +138,14 @@ document.querySelector("#add-board").addEventListener("click", async () => {
 document.querySelector("#add-start").addEventListener("click", async () => {
   const name = document.querySelector("#add-name").value.trim();
   if (!name) return showError("게시판 이름을 입력하세요.");
+  // "장학금, 공모전" 글자를 ["장학금", "공모전"] 목록으로 나누고, 빈 칸은 뺍니다. (웹사이트 설정 화면과 같은 방식)
+  const keywords = document.querySelector("#add-keywords").value.split(",").map((k) => k.trim()).filter((k) => k !== "");
   const res = await chrome.runtime.sendMessage({
     type: "startPicker",
     tabId: currentTab.id,
     folderId: Number(document.querySelector("#add-folder").value),
     name,
+    keywords,
   });
   if (res && res.ok) window.close();
   else showError((res && res.error) || "이 페이지에서는 제목 고르기를 시작할 수 없습니다.");
@@ -332,6 +336,6 @@ function showRunState(st) {
 (async () => {
   const sel = document.querySelector("#first-pages");
   const { firstPages } = await chrome.storage.local.get("firstPages");
-  sel.value = String(firstPages || 5);
+  sel.value = String(firstPages || 3); // 처음 기본값 3페이지
   sel.addEventListener("change", () => chrome.storage.local.set({ firstPages: Number(sel.value) }));
 })();
