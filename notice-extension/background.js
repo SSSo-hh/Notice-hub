@@ -217,7 +217,7 @@ async function checkWatchedTab(tabId) {
     state = await runInTab(tabId, (rule) => ({
       items: self.NoticeRules.applyRule(document, rule, location.href),
       hasPassword: !!document.querySelector('input[type="password"]'),
-    }), [site.rule]).catch(() => null);
+    }), [site.rule], ruleWorld(site.rule)).catch(() => null);
     if (!state || state.items.length || state.hasPassword) break;
     await sleep(750);
   }

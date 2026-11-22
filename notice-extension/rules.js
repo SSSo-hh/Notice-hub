@@ -69,9 +69,61 @@
 
   // ---------- 1. 제목 요소 정하기 ----------
 
+  // 글자가 화면에 보이지 않게 숨겨진 요소인지 (글자 크기 0, 투명, 화면 밖으로 밀어냄 등)
+  // 카드 전체를 덮는 "투명 링크"는 글자를 이렇게 숨기고, 실제 제목은 옆의 다른 요소에 보여 줍니다.
+  function isTextHidden(el) {
+    const view = el && el.ownerDocument && el.ownerDocument.defaultView;
+    if (!view || !view.getComputedStyle || !cleanText(el.textContent)) return false;
+    const cs = view.getComputedStyle(el);
+    if (parseFloat(cs.fontSize) === 0 || cs.opacity === "0" || cs.visibility === "hidden") return true;
+    if (parseFloat(cs.textIndent) < -500) return true;
+    if (/rgba\(.*,\s*0\)$|transparent/.test(cs.color)) return true;
+    const range = el.ownerDocument.createRange();
+    range.selectNodeContents(el);
+    const r = range.getBoundingClientRect();
+    return r.width * r.height === 0;
+  }
+
+  // 숨겨진 글자 요소 대신 쓸, 같은 카드 안의 "보이는 제목" 요소를 찾습니다.
+  // 숨겨진 글자와 두 글자 조각(예: "서울", "울특")이 가장 많이 겹치는 보이는 글자 요소를 고릅니다.
+  function visibleTitleNear(hiddenEl) {
+    const pairs = (t) => {
+      const c = cleanText(t);
+      const out = new Set();
+      for (let i = 0; i < c.length - 1; i++) out.add(c.slice(i, i + 2));
+      return out;
+    };
+    const hiddenPairs = pairs(hiddenEl.textContent);
+    let scope = hiddenEl.parentElement;
+    for (let level = 0; scope && level < 3; level++, scope = scope.parentElement) {
+      const cands = [...scope.querySelectorAll("*")].filter((el) => {
+        if (el === hiddenEl || hiddenEl.contains(el) || el.contains(hiddenEl)) return false;
+        const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("");
+        return cleanText(own).length >= 4 && !isTextHidden(el);
+      });
+      if (!cands.length) continue;
+      const scored = cands.map((el) => {
+        const p = pairs(el.textContent);
+        let shared = 0;
+        p.forEach((x) => { if (hiddenPairs.has(x)) shared++; });
+        return { el, shared, len: cleanText(el.textContent).length };
+      });
+      scored.sort((a, b) => b.shared - a.shared || b.len - a.len);
+      return scored[0].el;
+    }
+    return null;
+  }
+
   // 사용자가 클릭한 요소에서 "제목"으로 쓸 요소를 정합니다.
   // 링크(a) 안을 눌렀으면 그 링크, 아니면 누른 요소 자체(예: 표의 제목 칸)
+  // 고른 요소의 글자가 화면에 숨겨져 있으면(카드를 덮는 투명 링크) 같은 카드의 보이는 제목을 씁니다.
   function resolveTitleElement(target) {
+    const el = resolveTitleElementRaw(target);
+    if (el && isTextHidden(el)) return visibleTitleNear(el) || el;
+    return el;
+  }
+
+  function resolveTitleElementRaw(target) {
     if (!target) return null;
     const anchor = target.closest("a");
     if (anchor && cleanText(anchor.textContent).length >= 2) {
@@ -230,6 +282,25 @@
     return drop;
   }
 
+  // 대신 누를 요소: 제목이 링크나 처리기면 그것, 아니면 제목 안의 링크(처리기), 제목을 감싼 링크(처리기),
+  // 그것도 없으면 카드를 덮는 투명 링크(글자가 숨겨졌거나 줄 넓이 대부분을 덮는 링크), 아니면 제목 자체(줄의 처리기로 전달)
+  function clickTargetOf(item) {
+    const t = item.titleEl;
+    if (t.matches("a, [onclick]")) return t;
+    const inner = t.querySelector("a, [onclick]");
+    if (inner) return inner;
+    const up = t.closest("a, [onclick]");
+    if (up && item.row.contains(up)) return up;
+    const rowBox = item.row.getBoundingClientRect ? item.row.getBoundingClientRect() : null;
+    const overlay = [...item.row.querySelectorAll("a, [onclick]")].find((el) => {
+      if (isTextHidden(el)) return true;
+      if (!rowBox || !rowBox.width) return false;
+      const b = el.getBoundingClientRect();
+      return b.width * b.height >= rowBox.width * rowBox.height * 0.7;
+    });
+    return overlay || t;
+  }
+
   // 제목에 딸린 링크 요소: 제목이 링크면 그것, 아니면 제목 안이나 위의 링크
   function anchorOf(item) {
     return item.titleEl.closest("a") || item.titleEl.querySelector("a");
@@ -341,11 +412,72 @@
         if (new Set(ids).size >= Math.max(1, Math.ceil(items.length * 0.7))) return source;
       }
     }
+    // 화면 속성 어디에도 번호가 없으면, React 로 만든 사이트에서 줄 요소가 받은 데이터(props)에 있는지 찾습니다.
+    // (페이지 환경(MAIN)에서 실행할 때만 보임)
+    return reactIdSource(items, sampleItem, idValue);
+  }
+
+  // ---------- React 로 만든 사이트: 줄 요소의 데이터(props)에서 번호 찾기 ----------
+  // 번호를 화면에 쓰지 않고 자바스크립트 데이터에만 두는 사이트(카드 클릭 시 코드로 이동)를 위한 방법입니다.
+  // 특정 사이트용이 아니라 React 가 요소에 붙여 두는 내부 정보(__reactFiber)를 읽는 일반 방법입니다.
+  function reactFiberOf(el) {
+    const key = el && Object.keys(el).find((k) => k.startsWith("__reactFiber$") || k.startsWith("__reactInternalInstance$"));
+    return key ? el[key] : null;
+  }
+
+  // 객체 안(최대 3단계)에서 값이 idValue 인 칸의 경로를 찾습니다. 예: "employmentCompany.id"
+  function findValuePaths(obj, idValue) {
+    const found = [];
+    const seen = new Set();
+    (function walk(o, path, depth) {
+      if (!o || typeof o !== "object" || depth > 3 || seen.has(o) || o.nodeType || o.$$typeof) return;
+      seen.add(o);
+      Object.keys(o).forEach((k) => {
+        if (k === "children" || k.startsWith("_")) return;
+        const v = o[k];
+        const p = path ? path + "." + k : k;
+        if ((typeof v === "number" || typeof v === "string") && String(v) === idValue) found.push(p);
+        else if (v && typeof v === "object") walk(v, p, depth + 1);
+      });
+    })(obj, "", 0);
+    return found;
+  }
+
+  function reactIdSource(items, sampleItem, idValue) {
+    const elements = [sampleItem.row, ...sampleItem.row.querySelectorAll("*")].slice(0, 40);
+    for (const el of elements) {
+      let fiber = reactFiberOf(el);
+      for (let up = 0; fiber && up < 6; up++, fiber = fiber.return) {
+        for (const path of findValuePaths(fiber.memoizedProps, idValue)) {
+          const source = {
+            react: true,
+            element: el === sampleItem.row ? "" : relPath(sampleItem.row, el, true),
+            elementLoose: el === sampleItem.row ? "" : relPath(sampleItem.row, el, false),
+            up,
+            path,
+          };
+          const ids = items.map((it) => idFromSource(it, source)).filter(Boolean);
+          if (new Set(ids).size >= Math.max(1, Math.ceil(items.length * 0.7))) return source;
+        }
+      }
+    }
     return null;
+  }
+
+  // React 번호 틀로 한 줄에서 번호를 꺼냅니다. (페이지 환경이 아니면 null)
+  function reactIdOf(item, source) {
+    const el = source.element ? findByPath(item.row, source.element, source.elementLoose) : item.row;
+    let fiber = reactFiberOf(el);
+    for (let i = 0; fiber && i < source.up; i++) fiber = fiber.return;
+    if (!fiber) return null;
+    let v = fiber.memoizedProps;
+    for (const k of source.path.split(".")) v = v == null ? v : v[k];
+    return v == null || typeof v === "object" ? null : String(v);
   }
 
   // 속성 틀로 한 줄에서 글 번호를 꺼냅니다.
   function idFromSource(item, source) {
+    if (source.react) return reactIdOf(item, source);
     let el = source.element ? findByPath(item.row, source.element, source.elementLoose) : item.row;
     // 제목 쪽(제목 요소의 위)에 있는 속성이면 제목 요소에서 위로 찾아봅니다.
     if (!el || !el.hasAttribute(source.attr)) {
@@ -451,6 +583,8 @@
     findItems,
     deriveHrefRule,
     deriveIdSource,
+    clickTargetOf,
+    isTextHidden,
     idFromSource,
     realHref,
     anchorOf,

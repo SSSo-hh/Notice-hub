@@ -4,6 +4,11 @@
 // 1차에서 0건이면 목록을 자바스크립트로 그리는 사이트일 수 있어 ⑨단계 2차(실제 탭)로 넘깁니다.
 // background.js 에서 importScripts 로 불러옵니다. (fetchText 는 linkfinder.js 에 있음)
 
+// 규칙이 React 데이터(props)에서 글 번호를 읽는 방식이면 페이지 환경(MAIN)에서 실행해야 보입니다.
+function ruleWorld(rule) {
+  return rule && rule.link && rule.link.source && rule.link.source.react ? "MAIN" : "ISOLATED";
+}
+
 // 보이지 않는 문서(offscreen.html)가 없으면 만듭니다. 확장 하나에 하나만 둘 수 있습니다.
 async function ensureOffscreen() {
   const url = chrome.runtime.getURL("offscreen.html");
@@ -93,7 +98,7 @@ async function collectByTab(site) {
       last = await runInTab(tabId, (rule, base) => ({
         items: self.NoticeRules.applyRule(document, rule, location.href || base),
         hasPassword: !!document.querySelector('input[type="password"]'),
-      }), [site.rule, site.board_url]).catch(() => null);
+      }), [site.rule, site.board_url], ruleWorld(site.rule)).catch(() => null);
       if (last && last.items.length) break;
       await sleep(700);
     }
@@ -132,7 +137,7 @@ async function readPages(site, pages, visible) {
   if (pages <= 1) return out;
   let tabId = null;
   let ownWindow = null;
-  const readItems = () => runInTab(tabId, (rule) => self.NoticeRules.applyRule(document, rule, location.href), [site.rule]).catch(() => null);
+  const readItems = () => runInTab(tabId, (rule) => self.NoticeRules.applyRule(document, rule, location.href), [site.rule], ruleWorld(site.rule)).catch(() => null);
   try {
     if (visible) {
       // 앞에 보이는 창이어야 하므로 잠깐 앞으로 띄웁니다 (끝나면 바로 닫음)

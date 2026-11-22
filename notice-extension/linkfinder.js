@@ -172,9 +172,9 @@ async function observeClick(tabId, areas, sampleTitle) {
       window.__ntOpened = null;
       window.open = (url) => { window.__ntOpened = url ? new URL(url, location.href).href : null; return null; };
       const before = location.href;
-      // 제목 요소가 링크나 처리기가 아니면 안쪽의 링크(처리기)를 누릅니다. 없으면 제목 요소를 눌러 줄의 처리기로 전달되게 합니다.
-      const t = item.titleEl;
-      const target = t.matches("a, [onclick]") ? t : (t.querySelector("a, [onclick]") || t);
+      // 제목 요소가 링크나 처리기가 아니면 안쪽(또는 줄 안에 하나뿐인) 링크(처리기)를 누릅니다.
+      // 없으면 제목 요소를 눌러 줄의 처리기로 전달되게 합니다. (rules.js clickTargetOf)
+      const target = R.clickTargetOf(item);
       setTimeout(() => target.click(), 0);
       return { before };
     }, [areas, sampleTitle], "MAIN");
@@ -322,7 +322,7 @@ async function findLinkRule(boardUrl, areas, sampleTitle) {
         const items = R.findItems(document, areas);
         const sample = R.findSample(items, sampleTitle);
         return sample ? R.deriveIdSource(items, sample, value) : null;
-      }, [areas, sampleTitle, cand.value]);
+      }, [areas, sampleTitle, cand.value], "MAIN"); // MAIN: React 사이트의 줄 데이터(props)까지 보려고 페이지 환경에서 실행
       if (!source) continue;
 
       const template = cand.makeTemplate();
