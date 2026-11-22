@@ -305,14 +305,32 @@ async function findLinkRule(boardUrl, areas, sampleTitle) {
       await waitListReady(tabId, areas, sampleTitle);
     }
 
-    // 3. 대신 눌러 보고 관찰
+    // 3. 줄 안 다른 속성에 글마다 다른 주소가 있으면(공유 주소, "자세히" 링크 등) 그 주소로 글이 열리는지 확인
+    const attrCands = await runInTab(tabId, (areas, sampleTitle, base) => {
+      const R = self.NoticeRules;
+      const items = R.findItems(document, areas);
+      const sample = R.findSample(items, sampleTitle);
+      if (!sample) return [];
+      return R.attrUrlSources(items, sample).map((source) => ({ source, url: R.linkOf(sample, { mode: "attr", source }, base) }));
+    }, [areas, sampleTitle, boardUrl]).catch(() => []);
+    for (const cand of attrCands || []) {
+      if (!cand.url) continue;
+      const via = await verifyLink(cand.url, sampleTitle, others, tabId);
+      if (via) return { link: { mode: "attr", source: cand.source }, verified: true, via, observed: "attr", count: info.count };
+    }
+    if (attrCands && attrCands.length) {
+      await navigateTab(tabId, boardUrl);
+      await waitListReady(tabId, areas, sampleTitle);
+    }
+
+    // 4. 대신 눌러 보고 관찰
     const observed = await observeClick(tabId, areas, sampleTitle);
     if (observed.error || observed.kind === "none") {
       return { link: { mode: "list" }, verified: false, observed: observed.kind || "error", count: info.count,
         note: observed.error || "눌러도 주소가 바뀌지 않아(같은 화면 레이어 등) 목록 주소로 연결합니다." };
     }
 
-    // 4. 관찰한 값 중 줄 속성에도 있는 값 = 글 번호
+    // 5. 관찰한 값 중 줄 속성에도 있는 값 = 글 번호
     await navigateTab(tabId, boardUrl);
     await waitListReady(tabId, areas, sampleTitle);
     const candidates = idCandidates(observed);
@@ -327,7 +345,7 @@ async function findLinkRule(boardUrl, areas, sampleTitle) {
 
       const template = cand.makeTemplate();
       const sampleUrl = template.replace("{id}", encodeURIComponent(cand.value));
-      // 5. 검증: 만든 주소로 고른 글이 열리는지
+      // 6. 검증: 만든 주소로 고른 글이 열리는지
       const via = await verifyLink(sampleUrl, sampleTitle, others, tabId);
       if (via) {
         return { link: { mode: "template", source, url: template }, verified: true, via, observed: observed.kind, count: info.count };

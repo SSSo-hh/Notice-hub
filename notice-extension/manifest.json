@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "공지 모음 수집기",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "등록한 게시판의 새 공지 제목을 모아 공지 모음 DB에 저장합니다.",
   "permissions": [
     "storage",

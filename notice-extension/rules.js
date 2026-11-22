@@ -417,6 +417,39 @@
     return reactIdSource(items, sampleItem, idValue);
   }
 
+  // ---------- 줄 안 속성에 들어 있는 글 주소 (공유 주소 등) ----------
+  // 제목 링크로는 글 주소를 못 만들 때(POST 전용 등), 줄 안 다른 요소의 속성에 글마다 다른 주소가 들어 있으면 후보로 씁니다.
+  // 예: 공유 버튼의 data-...-url, "자세히" 링크의 href. 후보는 실제로 그 글이 열리는지 검증한 뒤에만 씁니다.
+  const SKIP_ATTRS = ["src", "srcset", "class", "style", "id", "alt", "title", "onclick", "onerror", "onload"];
+  function looksLikeUrl(v) {
+    v = (v || "").trim();
+    if (!/^(https?:\/\/|\/[^/])/i.test(v)) return false;
+    return !/\.(png|jpe?g|gif|svg|webp|ico|css|js)(\?|#|$)/i.test(v);
+  }
+  function attrUrlSources(items, sampleItem) {
+    const out = [];
+    const els = [sampleItem.row, ...sampleItem.row.querySelectorAll("*")];
+    els.forEach((el) => {
+      [...el.attributes].forEach((attr) => {
+        if (SKIP_ATTRS.includes(attr.name) || !looksLikeUrl(attr.value)) return;
+        const source = {
+          element: el === sampleItem.row ? "" : relPath(sampleItem.row, el, true),
+          elementLoose: el === sampleItem.row ? "" : relPath(sampleItem.row, el, false),
+          attr: attr.name,
+        };
+        const urls = items.map((it) => attrUrlOf(it, source, "http://x/")).filter(Boolean);
+        if (new Set(urls).size >= Math.max(1, Math.ceil(items.length * 0.7))) out.push(source);
+      });
+    });
+    return out;
+  }
+  function attrUrlOf(item, source, baseUrl) {
+    const el = source.element ? findByPath(item.row, source.element, source.elementLoose) : item.row;
+    const v = el && el.getAttribute(source.attr);
+    if (!looksLikeUrl(v)) return null;
+    try { return new URL(v.trim(), baseUrl).href; } catch (e) { return null; }
+  }
+
   // ---------- React 로 만든 사이트: 줄 요소의 데이터(props)에서 번호 찾기 ----------
   // 번호를 화면에 쓰지 않고 자바스크립트 데이터에만 두는 사이트(카드 클릭 시 코드로 이동)를 위한 방법입니다.
   // 특정 사이트용이 아니라 React 가 요소에 붙여 두는 내부 정보(__reactFiber)를 읽는 일반 방법입니다.
@@ -511,6 +544,10 @@
       const id = idFromSource(item, link.source);
       return id ? link.url.replace("{id}", encodeURIComponent(id)) : null;
     }
+    if (link.mode === "attr") {
+      const url = attrUrlOf(item, link.source, baseUrl);
+      return url ? normalizeLink(url) : null;
+    }
     if (link.mode === "list") {
       return normalizeLink(baseUrl).replace(/#.*$/, "") + "#nt-" + hashText(item.title);
     }
@@ -584,6 +621,7 @@
     deriveHrefRule,
     deriveIdSource,
     clickTargetOf,
+    attrUrlSources,
     isTextHidden,
     idFromSource,
     realHref,
